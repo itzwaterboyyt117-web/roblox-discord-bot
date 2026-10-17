@@ -7,7 +7,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # --- CONFIGURATION ---
-BOT_TOKEN = os.environ.get("MTU2MTA0MDUzNDkzODg0OTM3MA.GE_hhV.M0neWyx71uIZ5M2KboLp4rMsMHVKsXafZl2k2M") 
+BOT_TOKEN = os.environ.get("MTU2MTA0MDUzNDkzODg0OTM3MA.GlSw50.XRpLvsTEK9WofkHFwCDj7kUtxA00yMCmeT74mg") 
 YOUR_USER_ID = 1485074929950003241  # Replace with your actual numerical Discord User ID
 
 intents = discord.Intents.default()
