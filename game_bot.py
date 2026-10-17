@@ -2,40 +2,55 @@ import discord
 from discord.ext import commands, tasks
 import asyncio
 import requests
+import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # --- CONFIGURATION ---
-BOT_TOKEN = "MTU2MTA0MDUzNDkzODg0OTM3MA.GE_hhV.M0neWyx71uIZ5M2KboLp4rMsMHVKsXafZl2k2M"
-YOUR_USER_ID = 1485074929950003241  # Put your numerical Discord User ID here
+BOT_TOKEN = os.environ.get("MTU2MTA0MDUzNDkzODg0OTM3MA.GE_hhV.M0neWyx71uIZ5M2KboLp4rMsMHVKsXafZl2k2M") 
+YOUR_USER_ID = 1485074929950003241  # Replace with your actual numerical Discord User ID
 
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Track users who want 24/7 alerts: { user_id: ["Kitsune", "Leopard"] }
 USER_WATCHLIST = {}  
 
 # ==========================================
-# 🐍 PURE PYTHON LIVE DATA UTILITY (NO BS4)
+# 🌐 KEEP-ALIVE WEB SERVER (FOR RENDER FREE TIER)
+# ==========================================
+class SimpleWebServer(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+        self.wfile.write(b"Bot is alive and running!")
+
+def run_web_server():
+    # Render automatically routes traffic to port 10000 for free web services
+    server = HTTPServer(("0.0.0.0", 10000), SimpleWebServer)
+    print("Web server helper active on port 10000")
+    server.serve_forever()
+
+# ==========================================
+# 🐍 PURE PYTHON LIVE DATA UTILITY
 # ==========================================
 def get_live_blox_fruits_stock():
-    """Fetches live stock database directly as JSON—no web scraping required."""
     try:
-        # Pulls live tracked stock directly from a community raw data mirror
         url = "https://githubusercontent.com"
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
-            data = response.json() # Automatically turns data into a clean Python dictionary
+            data = response.json()
             normal = data.get("normal", ["Rocket", "Spin", "Flame", "Spring"])
             mirage = data.get("mirage", ["Kitsune", "Leopard"])
             return normal, mirage
     except Exception:
         pass
-    # Fallback default values if network goes down
     return ["Rocket", "Ice", "Dark", "Light"], ["Dough", "Leopard"]
 
 
 # ==========================================
-# 📊 GAME DATABASES (Python Lists & Dicts)
+# 📊 GAME DATABASES
 # ==========================================
 ROBLOX_RIVALS_GUNS = [
     {"name": "Pistol", "keys": "Starter", "damage": "22", "img": "https://githubusercontent.com"},
@@ -53,7 +68,7 @@ STEAL_AN_EGG_DATA = {
 
 
 # ==========================================
-# 🍎 BLOX FRUITS BUTTON MENUS
+# 🍎 BLOX FRUITS MENUS
 # ==========================================
 class BloxFruitsStockView(discord.ui.View):
     def __init__(self):
@@ -67,13 +82,11 @@ class BloxFruitsStockView(discord.ui.View):
         embed = discord.Embed(title="🍎 Live Blox Fruits Stock Dashboard", color=discord.Color.blue())
         embed.add_field(name="🌐 Normal Regular Stock", value="\n".join([f"• {f}" for f in normal]), inline=False)
         embed.add_field(name="🏝️ Mirage Island Stock", value="\n".join([f"• {f}" for f in mirage]), inline=False)
-        
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     @discord.ui.button(label="24/7 Stock Monitor", style=discord.ButtonStyle.blurple, custom_id="bf_247_stock")
     async def watch_stock_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         view = discord.ui.View()
-        
         select = discord.ui.Select(
             placeholder="Pick fruits to track 24/7...",
             min_values=1,
@@ -130,7 +143,6 @@ class MainDashboardView(discord.ui.View):
                     embed.add_field(name="Weapon Stats", value=f"**Gun:** {gun['name']}\n**Unlock Cost:** {gun['keys']}\n**Base Damage:** {gun['damage']}")
                     embed.set_image(url=gun["img"])
                     embeds.append(embed)
-                
                 await interaction.followup.send(embeds=embeds, ephemeral=True)
 
             elif value == "steal_egg":
@@ -148,7 +160,6 @@ class MainDashboardView(discord.ui.View):
                     z_embed.add_field(name="Zone Boss Encounter", value=f"• **Boss Name:** {zone['boss']}")
                     z_embed.set_image(url=zone["boss_img"])
                     embeds.append(z_embed)
-                    
                 await interaction.followup.send(embeds=embeds, ephemeral=True)
 
             elif value == "blox_fruits":
@@ -166,7 +177,6 @@ class MainDashboardView(discord.ui.View):
 @tasks.loop(minutes=5)
 async def live_stock_monitor_loop():
     await bot.wait_until_ready()
-    
     normal_stock, mirage_stock = get_live_blox_fruits_stock()
     combined_stock = normal_stock + mirage_stock
     
@@ -175,11 +185,9 @@ async def live_stock_monitor_loop():
             for fruit in list(tracked_fruits):
                 if fruit in combined_stock:
                     user = await bot.fetch_user(user_id)
-                    # Triple notification burst
                     for i in range(3):
-                        await user.send(f"🚨 **[ALERT {i+1}/3]** <@{user_id}>! **{fruit}** is in the live stock right now! Go get it!")
+                        await user.send(f"🚨 **[ALERT {i+1}/3]** <@{user_id}>! **{fruit}** is in the live stock right now!")
                         await asyncio.sleep(1.5)  
-                    
                     tracked_fruits.remove(fruit)
             if not tracked_fruits:
                 del USER_WATCHLIST[user_id]
@@ -193,15 +201,12 @@ async def live_stock_monitor_loop():
 @bot.event
 async def on_ready():
     print(f"Bot successfully operating online as {bot.user.name}")
-    print(f"Run !dashboard inside your DMs to open it!")
     if not live_stock_monitor_loop.is_running():
         live_stock_monitor_loop.start()
 
 @bot.command()
 async def dashboard(ctx):
     if ctx.author.id != YOUR_USER_ID:
-        return await ctx.send("❌ Access Denied: Main control limited strictly to system owner profiles.")
-    
-    await ctx.send("🎮 **Roblox Game Control Dashboard**\nSelect your monitoring priorities from the dropdown menu:", view=MainDashboardView())
+        return await ctx.send("❌ Access Denied.")
+    await ctx.send("🎮 **Roblox Game Control Dashboard**", view=MainDashboardView())
 
-bot.run(BOT_TOKEN)
